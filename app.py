@@ -4,7 +4,7 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 
 # Load Data
-df = pd.read_csv("Nifty_Stocks")
+df = pd.read_csv("Nifty_Stocks.csv")
 df.Date = pd.to_datetime(df.Date)
 
 # Page Config
