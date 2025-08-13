@@ -1,73 +1,70 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sb
 import matplotlib.pyplot as plt
 
 # Load Data
 df = pd.read_csv("Nifty_Stocks.csv")
-df.Date = pd.to_datetime(df.Date)
+df['Date'] = pd.to_datetime(df['Date'])
 
 # Page Config
-st.set_page_config(page_title="Nifty Stock Viewer", layout="wide")
+st.set_page_config(page_title="📈 Nifty Stocks Dashboard", layout="wide")
+st.title("📊 Nifty Stocks - Advanced Viewer")
 
-st.title("📈 Nifty Stocks Sector & Stock Viewer")
+# Sidebar filters
+st.sidebar.header("🔍 Filters")
 
-# --- Sector selection ---
-sectors = df['Category'].unique()
-selected_sector = st.selectbox("Select Sector", sectors)
+# Date filter
+min_date, max_date = df['Date'].min(), df['Date'].max()
+date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date])
 
-# Filter by sector
-filtered_by_sector = df[df['Category'] == selected_sector]
+# Sector filter (multi-select)
+sectors = sorted(df['Category'].unique())
+selected_sectors = st.sidebar.multiselect("Select Sectors", sectors, default=sectors)
 
-# --- Stock selection ---
-stocks = filtered_by_sector['Symbol'].unique()
-selected_stock = st.selectbox("Select Stock", stocks)
+# Stock search
+stock_search = st.sidebar.text_input("Search Stock Name").lower()
 
-# Filter by selected stock
-stock_data = filtered_by_sector[filtered_by_sector['Symbol'] == selected_stock].sort_values("Date")
+# Filter data
+filtered_df = df[
+    (df['Date'] >= pd.to_datetime(date_range[0])) &
+    (df['Date'] <= pd.to_datetime(date_range[1])) &
+    (df['Category'].isin(selected_sectors)) &
+    (df['Stock'].str.lower().str.contains(stock_search))
+]
 
-# --- NEW FEATURE 1: Direct stock search ---
-st.markdown("### 🔍 Search Stock by Symbol")
-search_symbol = st.text_input("Enter Stock Symbol (optional)")
-if search_symbol:
-    search_data = df[df['Symbol'].str.contains(search_symbol.upper(), case=False)]
-    if not search_data.empty:
-        st.dataframe(search_data.sort_values("Date").tail(10))
-    else:
-        st.warning("No matching stock found!")
+# Show filtered data
+st.subheader("📄 Filtered Data")
+st.dataframe(filtered_df)
 
-# --- NEW FEATURE 2: Stock statistics ---
-latest_price = stock_data['Close'].iloc[-1]
-highest_price = stock_data['Close'].max()
-lowest_price = stock_data['Close'].min()
-avg_price = stock_data['Close'].mean()
+# Chart type selection
+chart_type = st.selectbox("Choose Chart Type", ["Line Chart", "Bar Chart", "Moving Average"])
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Latest Price", f"{latest_price:.2f}")
-col2.metric("Highest Price", f"{highest_price:.2f}")
-col3.metric("Lowest Price", f"{lowest_price:.2f}")
-col4.metric("Average Price", f"{avg_price:.2f}")
+# Plot data
+if not filtered_df.empty:
+    plt.figure(figsize=(12, 6))
 
-# --- Plot: Closing Price with Moving Average ---
-st.subheader(f"Closing Price Trend with Moving Average: {selected_stock}")
-stock_data['MA20'] = stock_data['Close'].rolling(20).mean()  # 20-day MA
-stock_data['MA50'] = stock_data['Close'].rolling(50).mean()  # 50-day MA
+    if chart_type == "Line Chart":
+        for stock in filtered_df['Stock'].unique():
+            stock_data = filtered_df[filtered_df['Stock'] == stock]
+            plt.plot(stock_data['Date'], stock_data['Close'], label=stock)
 
-fig, ax = plt.subplots(figsize=(12, 5))
-sb.lineplot(x='Date', y='Close', data=stock_data, ax=ax, label='Close Price')
-sb.lineplot(x='Date', y='MA20', data=stock_data, ax=ax, label='20-Day MA')
-sb.lineplot(x='Date', y='MA50', data=stock_data, ax=ax, label='50-Day MA')
-ax.set_xlabel("Date")
-ax.set_ylabel("Closing Price")
-plt.xticks(rotation=45)
-ax.legend()
-st.pyplot(fig)
+    elif chart_type == "Bar Chart":
+        bar_data = filtered_df.groupby('Stock')['Close'].mean().sort_values()
+        bar_data.plot(kind='bar')
+        plt.ylabel("Average Closing Price")
 
-# --- NEW FEATURE 3: Volume trend ---
-st.subheader(f"Trading Volume Trend: {selected_stock}")
-fig2, ax2 = plt.subplots(figsize=(12, 4))
-sb.barplot(x='Date', y='Volume', data=stock_data, ax=ax2, color='skyblue')
-ax2.set_xlabel("Date")
-ax2.set_ylabel("Volume")
-plt.xticks(rotation=45)
-st.pyplot(fig2)
+    elif chart_type == "Moving Average":
+        ma_window = st.slider("Moving Average Window (days)", 5, 50, 20)
+        for stock in filtered_df['Stock'].unique():
+            stock_data = filtered_df[filtered_df['Stock'] == stock].sort_values('Date')
+            stock_data['MA'] = stock_data['Close'].rolling(ma_window).mean()
+            plt.plot(stock_data['Date'], stock_data['MA'], label=f"{stock} MA({ma_window})")
+
+    plt.legend()
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+
+# Download filtered data
+csv = filtered_df.to_csv(index=False).encode('utf-8')
+st.download_button("📥 Download CSV", csv, "filtered_nifty_stocks.csv", "text/csv")
+
