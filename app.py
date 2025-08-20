@@ -44,18 +44,18 @@ if not filtered_df.empty:
     plt.figure(figsize=(12, 6))
 
     if chart_type == "Line Chart":
-        for stock in filtered_df['Stock'].unique():
+        for stock in filtered_df['Symbol'].unique():
             stock_data = filtered_df[filtered_df['Stock'] == stock]
             plt.plot(stock_data['Date'], stock_data['Close'], label=stock)
 
     elif chart_type == "Bar Chart":
-        bar_data = filtered_df.groupby('Stock')['Close'].mean().sort_values()
+        bar_data = filtered_df.groupby('Symbol')['Close'].mean().sort_values()
         bar_data.plot(kind='bar')
         plt.ylabel("Average Closing Price")
 
     elif chart_type == "Moving Average":
         ma_window = st.slider("Moving Average Window (days)", 5, 50, 20)
-        for stock in filtered_df['Stock'].unique():
+        for stock in filtered_df['Symbol'].unique():
             stock_data = filtered_df[filtered_df['Stock'] == stock].sort_values('Date')
             stock_data['MA'] = stock_data['Close'].rolling(ma_window).mean()
             plt.plot(stock_data['Date'], stock_data['MA'], label=f"{stock} MA({ma_window})")
