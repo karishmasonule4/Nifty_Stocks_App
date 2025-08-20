@@ -29,7 +29,7 @@ filtered_df = df[
     (df['Date'] >= pd.to_datetime(date_range[0])) &
     (df['Date'] <= pd.to_datetime(date_range[1])) &
     (df['Category'].isin(selected_sectors)) &
-    (df['Stock'].str.lower().str.contains(stock_search))
+    (df['Symbol'].str.lower().str.contains(stock_search))
 ]
 
 # Show filtered data
