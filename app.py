@@ -45,7 +45,7 @@ if not filtered_df.empty:
 
     if chart_type == "Line Chart":
         for stock in filtered_df['Symbol'].unique():
-            stock_data = filtered_df[filtered_df['Stock'] == stock]
+            stock_data = filtered_df[filtered_df['Symbol'] == stock]
             plt.plot(stock_data['Date'], stock_data['Close'], label=stock)
 
     elif chart_type == "Bar Chart":
